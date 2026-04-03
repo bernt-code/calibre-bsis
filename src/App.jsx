@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { DIMENSIONS, NAV_ITEMS, PRIMARY_COLOR } from "./lib/constants";
-import { loadStoredData, saveData } from "./lib/storage";
 import { getDimensionCompletion, getOverallCompletion } from "./lib/completion";
 
-// Pages
+// Auth + school state
+import { useAuth } from "./contexts/AuthContext";
+import { useSchool } from "./contexts/SchoolContext";
+
+// Auth / school-selection screens
+import LoginPage from "./components/pages/LoginPage";
+import SignupPage from "./components/pages/SignupPage";
+import SchoolPicker from "./components/pages/SchoolPicker";
+
+// BSIS pages
 import HomePage from "./components/pages/HomePage";
 import Dashboard from "./components/pages/Dashboard";
 import SchoolProfile from "./components/pages/SchoolProfile";
@@ -16,56 +24,100 @@ import P6Societal from "./components/pages/P6Societal";
 import P7Image from "./components/pages/P7Image";
 import { SetupScrape, CVCollection, DataSources, MediaIntel, Export } from "./components/pages/ToolPages";
 
-// CSS
 import "./styles/app.css";
 
 /**
- * Root App component with routing, sidebar, and main content area
+ * Loading splash — shown only while Supabase resolves the session on first load.
+ */
+function LoadingScreen() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#131313",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Space Grotesk', 'Inter', system-ui, sans-serif",
+        color: "#333",
+        fontSize: 14,
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div style={{ color: "#00FF41", fontSize: 22, marginBottom: 16 }}>◉</div>
+        <div>Initialising Calibre…</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Root App component.
+ *
+ * Auth gate:
+ *   1. authLoading  → LoadingScreen (session not yet resolved)
+ *   2. !user        → LoginPage
+ *   3. !activeSchool → SchoolPicker
+ *   4. schoolData loading → LoadingScreen
+ *   5. Ready        → main app (sidebar + content)
  */
 export default function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const {
+    activeSchool,
+    setActiveSchool,
+    schoolData,
+    setSchoolData,
+    saveSchoolData,
+    saving,
+  } = useSchool();
+
   const [currentPage, setCurrentPage] = useState("home");
-  const [data, setData] = useState(() => loadStoredData());
+  const [showSignup, setShowSignup]   = useState(false);
   const mainRef = useRef(null);
 
-  // Auto-save data to localStorage with debounce
+  // ── Auto-save to Supabase on data change ──────────────────────────────────
   useEffect(() => {
+    if (!schoolData || !activeSchool) return;
     const timer = setTimeout(() => {
-      try {
-        saveData(data);
-      } catch (error) {
-        console.error("Failed to save data:", error);
-      }
-    }, 500);
-
+      saveSchoolData(schoolData).catch(console.error);
+    }, 1000);
     return () => clearTimeout(timer);
-  }, [data]);
+  }, [schoolData, activeSchool]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Create field setter for each section
-  const createFieldSetter = useCallback((sectionId) => {
-    return (fieldName, fieldValue) => {
-      setData(prevData => ({
-        ...prevData,
-        [sectionId]: {
-          ...prevData[sectionId],
-          [fieldName]: fieldValue
-        }
+  // ── Field setter (matches existing page API) ──────────────────────────────
+  const createFieldSetter = useCallback(
+    (sectionId) => (fieldName, fieldValue) => {
+      setSchoolData((prev) => ({
+        ...prev,
+        [sectionId]: { ...prev[sectionId], [fieldName]: fieldValue },
       }));
-    };
-  }, []);
+    },
+    [setSchoolData]
+  );
 
-  // Navigate and scroll to top
+  // ── Navigate + scroll to top ──────────────────────────────────────────────
   const goToPage = useCallback((pageId) => {
     setCurrentPage(pageId);
-    mainRef.current?.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const overallCompletion = getOverallCompletion(data);
-  const currentNav = NAV_ITEMS.find(item => item.id === currentPage);
+  // ── Auth gate ─────────────────────────────────────────────────────────────
+  if (authLoading) return <LoadingScreen />;
+  if (!user) {
+    if (showSignup) {
+      return <SignupPage onGoToLogin={() => setShowSignup(false)} />;
+    }
+    return <LoginPage onGoToSignup={() => setShowSignup(true)} />;
+  }
+  if (!activeSchool) return <SchoolPicker />;
+  if (!schoolData)   return <LoadingScreen />;
 
-  // Render current page
+  // ── Main app ──────────────────────────────────────────────────────────────
+  const data = schoolData;
+  const overallCompletion = getOverallCompletion(data);
+  const currentNav = NAV_ITEMS.find((item) => item.id === currentPage);
+
   const renderPage = () => {
     switch (currentPage) {
       case "home":
@@ -107,7 +159,7 @@ export default function App() {
     <>
       <style>{}</style>
       <div className="app">
-        {/* Sidebar */}
+        {/* ── Sidebar ──────────────────────────────────────────────────── */}
         <aside className="sidebar">
           <div className="sb-brand">
             <div className="sb-wordmark">
@@ -116,6 +168,41 @@ export default function App() {
               <span>Calibre</span>
             </div>
             <div className="sb-tagline">Automated impact evidence.</div>
+          </div>
+
+          {/* Active school indicator */}
+          <div
+            style={{
+              padding: "10px 16px",
+              background: "#1a1a1a",
+              borderTop: "1px solid #1e1e1e",
+              borderBottom: "1px solid #1e1e1e",
+              marginBottom: 4,
+            }}
+          >
+            <div
+              style={{
+                color: "#00FF41",
+                fontSize: 9,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                marginBottom: 3,
+              }}
+            >
+              Active school
+            </div>
+            <div
+              style={{
+                color: "#ccc",
+                fontSize: 12,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {activeSchool.name}
+            </div>
           </div>
 
           <div className="sb-progress">
@@ -135,15 +222,13 @@ export default function App() {
               onClick={() => goToPage("home")}
             >
               <div className="nav-icon">●</div>
-              <div className="nav-label" style={{ fontWeight: 700 }}>
-                Home
-              </div>
+              <div className="nav-label" style={{ fontWeight: 700 }}>Home</div>
             </div>
 
-            {/* Collection section */}
+            {/* Collection */}
             <div className="sb-sec-lbl">Collection</div>
-            {["dashboard", "setup", "cvs"].map(id => {
-              const nav = NAV_ITEMS.find(item => item.id === id);
+            {["dashboard", "setup", "cvs"].map((id) => {
+              const nav = NAV_ITEMS.find((item) => item.id === id);
               return (
                 <div
                   key={id}
@@ -156,9 +241,9 @@ export default function App() {
               );
             })}
 
-            {/* BSIS Dimensions section */}
+            {/* BSIS Dimensions */}
             <div className="sb-sec-lbl">BSIS Dimensions</div>
-            {DIMENSIONS.map(dim => {
+            {DIMENSIONS.map((dim) => {
               const completion = getDimensionCompletion(data, dim.id);
               return (
                 <div
@@ -175,10 +260,10 @@ export default function App() {
               );
             })}
 
-            {/* Tools section */}
+            {/* Tools */}
             <div className="sb-sec-lbl">Tools</div>
-            {["sources", "media", "export"].map(id => {
-              const nav = NAV_ITEMS.find(item => item.id === id);
+            {["sources", "media", "export"].map((id) => {
+              const nav = NAV_ITEMS.find((item) => item.id === id);
               return (
                 <div
                   key={id}
@@ -192,24 +277,44 @@ export default function App() {
             })}
           </nav>
 
+          {/* Footer — save status, switch school, sign out */}
           <div className="sb-footer">
-            <div className="sb-saved">Saved automatically</div>
+            <div className="sb-saved" style={{ marginBottom: 8 }}>
+              {saving ? "Saving…" : "Saved to cloud"}
+            </div>
+
             <button
               className="btn btn-ghost btn-sm"
-              style={{ width: "100%" }}
+              style={{ width: "100%", marginBottom: 6 }}
               onClick={() => goToPage("export")}
             >
               ↓ Export report
             </button>
+
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ width: "100%", marginBottom: 6 }}
+              onClick={() => setActiveSchool(null)}
+            >
+              ⇄ Switch school
+            </button>
+
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ width: "100%", color: "#555" }}
+              onClick={signOut}
+            >
+              Sign out
+            </button>
           </div>
         </aside>
 
-        {/* Main content area */}
+        {/* ── Main content ─────────────────────────────────────────────── */}
         <main className="main" ref={mainRef}>
           <div className="topbar">
             <div className="topbar-l">{currentNav?.label}</div>
             <div className="topbar-r">
-              <span className="topbar-saved">auto-saved</span>
+              <span className="topbar-saved">{saving ? "saving…" : "auto-saved"}</span>
               <button
                 className="btn btn-green btn-sm"
                 onClick={() => goToPage("export")}
@@ -219,9 +324,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="content">
-            {renderPage()}
-          </div>
+          <div className="content">{renderPage()}</div>
         </main>
       </div>
     </>
