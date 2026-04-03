@@ -70,6 +70,7 @@ export default function App() {
     setSchoolData,
     saveSchoolData,
     saving,
+    saveError,
   } = useSchool();
 
   const [currentPage, setCurrentPage] = useState("home");
@@ -157,7 +158,6 @@ export default function App() {
 
   return (
     <>
-      <style>{}</style>
       <div className="app">
         {/* ── Sidebar ──────────────────────────────────────────────────── */}
         <aside className="sidebar">
@@ -279,8 +279,11 @@ export default function App() {
 
           {/* Footer — save status, switch school, sign out */}
           <div className="sb-footer">
-            <div className="sb-saved" style={{ marginBottom: 8 }}>
-              {saving ? "Saving…" : "Saved to cloud"}
+            <div
+              className="sb-saved"
+              style={{ marginBottom: 8, color: saveError ? "#f87171" : undefined }}
+            >
+              {saving ? "Saving…" : saveError ? "⚠ Save failed" : "Saved to cloud"}
             </div>
 
             <button
@@ -314,7 +317,12 @@ export default function App() {
           <div className="topbar">
             <div className="topbar-l">{currentNav?.label}</div>
             <div className="topbar-r">
-              <span className="topbar-saved">{saving ? "saving…" : "auto-saved"}</span>
+              <span
+                className="topbar-saved"
+                style={saveError ? { color: "#f87171" } : undefined}
+              >
+                {saving ? "saving…" : saveError ? "save failed" : "auto-saved"}
+              </span>
               <button
                 className="btn btn-green btn-sm"
                 onClick={() => goToPage("export")}

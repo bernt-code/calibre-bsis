@@ -25,6 +25,7 @@ export function SchoolProvider({ children }) {
   const [schoolData, setSchoolData]         = useState(null);
   const [loadingSchools, setLoadingSchools] = useState(false);
   const [saving, setSaving]                 = useState(false);
+  const [saveError, setSaveError]           = useState(false);
 
   // Ref keeps fetchSchools from using a stale activeSchool closure
   const activeSchoolRef = useRef(null);
@@ -100,8 +101,9 @@ export function SchoolProvider({ children }) {
     if (!activeSchool || !user) return;
 
     setSaving(true);
+    setSaveError(false);
 
-    await supabase.from("school_data").upsert(
+    const { error } = await supabase.from("school_data").upsert(
       {
         school_id: activeSchool.id,
         data,
@@ -109,6 +111,11 @@ export function SchoolProvider({ children }) {
       },
       { onConflict: "school_id" }
     );
+
+    if (error) {
+      console.error("saveSchoolData failed:", error);
+      setSaveError(true);
+    }
 
     setSaving(false);
   };
@@ -184,6 +191,7 @@ export function SchoolProvider({ children }) {
         provisionSchool,
         loadingSchools,
         saving,
+        saveError,
       }}
     >
       {children}

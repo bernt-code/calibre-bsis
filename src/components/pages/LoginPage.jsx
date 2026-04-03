@@ -1,18 +1,21 @@
 import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
-const INPUT_STYLE = {
-  width: "100%",
-  padding: "10px 12px",
-  background: "#111",
-  border: "1px solid #2a2a2a",
-  borderRadius: 4,
-  color: "#e8e8e8",
-  fontSize: 14,
-  outline: "none",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-};
+function inputStyle(focused) {
+  return {
+    width: "100%",
+    padding: "10px 12px",
+    background: "#111",
+    border: `1px solid ${focused ? "#00FF41" : "#2a2a2a"}`,
+    borderRadius: 4,
+    color: "#e8e8e8",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    transition: "border-color 0.15s",
+  };
+}
 
 const LABEL_STYLE = {
   display: "block",
@@ -28,8 +31,12 @@ export default function LoginPage({ onGoToSignup }) {
   const { signIn } = useAuth();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
+  const [focused, setFocused]   = useState(null);
   const [error, setError]       = useState(null);
   const [loading, setLoading]   = useState(false);
+
+  const focus = (name) => () => setFocused(name);
+  const blur  = ()     => setFocused(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,9 +110,9 @@ export default function LoginPage({ onGoToSignup }) {
               required
               autoComplete="email"
               placeholder="you@institution.edu"
-              style={INPUT_STYLE}
-              onFocus={(e) => (e.target.style.borderColor = "#00FF41")}
-              onBlur={(e)  => (e.target.style.borderColor = "#2a2a2a")}
+              style={inputStyle(focused === "email")}
+              onFocus={focus("email")}
+              onBlur={blur}
             />
           </div>
 
@@ -118,9 +125,9 @@ export default function LoginPage({ onGoToSignup }) {
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              style={INPUT_STYLE}
-              onFocus={(e) => (e.target.style.borderColor = "#00FF41")}
-              onBlur={(e)  => (e.target.style.borderColor = "#2a2a2a")}
+              style={inputStyle(focused === "password")}
+              onFocus={focus("password")}
+              onBlur={blur}
             />
           </div>
 

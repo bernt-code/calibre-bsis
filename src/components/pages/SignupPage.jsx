@@ -2,19 +2,6 @@ import React, { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useSchool } from "../../contexts/SchoolContext";
 
-const INPUT_STYLE = {
-  width: "100%",
-  padding: "10px 12px",
-  background: "#111",
-  border: "1px solid #2a2a2a",
-  borderRadius: 4,
-  color: "#e8e8e8",
-  fontSize: 14,
-  outline: "none",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-};
-
 const LABEL_STYLE = {
   display: "block",
   color: "#555",
@@ -35,6 +22,22 @@ const SECTION_LABEL = {
   fontWeight: 700,
 };
 
+function inputStyle(focused) {
+  return {
+    width: "100%",
+    padding: "10px 12px",
+    background: "#111",
+    border: `1px solid ${focused ? "#00FF41" : "#2a2a2a"}`,
+    borderRadius: 4,
+    color: "#e8e8e8",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    transition: "border-color 0.15s",
+  };
+}
+
 export default function SignupPage({ onGoToLogin }) {
   const { provisionSchool } = useSchool();
 
@@ -44,15 +47,23 @@ export default function SignupPage({ onGoToLogin }) {
   const [website, setWebsite]       = useState("");
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
+  const [focused, setFocused]       = useState(null); // name of focused field
   const [error, setError]           = useState(null);
   const [loading, setLoading]       = useState(false);
 
-  const handleFocus = (e) => (e.target.style.borderColor = "#00FF41");
-  const handleBlur  = (e) => (e.target.style.borderColor = "#2a2a2a");
+  const focus = (name) => () => setFocused(name);
+  const blur  = ()     => setFocused(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+
+    // Client-side validation
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -152,9 +163,9 @@ export default function SignupPage({ onGoToLogin }) {
               onChange={(e) => setSchoolName(e.target.value)}
               required
               placeholder="University of Example"
-              style={INPUT_STYLE}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
+              style={inputStyle(focused === "schoolName")}
+              onFocus={focus("schoolName")}
+              onBlur={blur}
             />
           </div>
 
@@ -167,9 +178,9 @@ export default function SignupPage({ onGoToLogin }) {
                 onChange={(e) => setCountry(e.target.value)}
                 required
                 placeholder="Finland"
-                style={INPUT_STYLE}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
+                style={inputStyle(focused === "country")}
+                onFocus={focus("country")}
+                onBlur={blur}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -180,9 +191,9 @@ export default function SignupPage({ onGoToLogin }) {
                 onChange={(e) => setCity(e.target.value)}
                 required
                 placeholder="Helsinki"
-                style={INPUT_STYLE}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
+                style={inputStyle(focused === "city")}
+                onFocus={focus("city")}
+                onBlur={blur}
               />
             </div>
           </div>
@@ -199,9 +210,9 @@ export default function SignupPage({ onGoToLogin }) {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://www.example.edu"
-              style={INPUT_STYLE}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
+              style={inputStyle(focused === "website")}
+              onFocus={focus("website")}
+              onBlur={blur}
             />
           </div>
 
@@ -217,9 +228,9 @@ export default function SignupPage({ onGoToLogin }) {
               required
               autoComplete="email"
               placeholder="you@institution.edu"
-              style={INPUT_STYLE}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
+              style={inputStyle(focused === "email")}
+              onFocus={focus("email")}
+              onBlur={blur}
             />
           </div>
 
@@ -230,11 +241,12 @@ export default function SignupPage({ onGoToLogin }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
               autoComplete="new-password"
               placeholder="Min. 6 characters"
-              style={INPUT_STYLE}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
+              style={inputStyle(focused === "password")}
+              onFocus={focus("password")}
+              onBlur={blur}
             />
           </div>
 

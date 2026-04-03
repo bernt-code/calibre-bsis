@@ -1,6 +1,7 @@
-// Supabase configuration
-export const SUPABASE_URL = "https://jzhcjenhsbcftinzfozz.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6aGNqZW5oc2JjZnRpbnpmb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MTUxNTIsImV4cCI6MjA5MDA5MTE1Mn0.vvkajGZYuZMMEY4OEu6khmfFgd51UOKozFKh1e85vCM";
+// Supabase configuration — credentials read from .env.local (gitignored).
+// See .env.example for required variable names.
+export const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL;
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const SCHOOL_ID = "a52748ab-65cf-46d8-b28d-74a4a7c88020"; // University of Vaasa
 export const SCHOOL_WEBSITE = "https://www.uwasa.fi/en";
 export const SCRAPE_FN_URL = SUPABASE_URL + "/functions/v1/run-school-scrape";
